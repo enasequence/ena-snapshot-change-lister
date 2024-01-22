@@ -35,16 +35,23 @@ import java.net.URL;
 
 @Component
 @Slf4j
-public class PortalApiClient {
+public class SnapshotClient {
 
-    static final String URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=accession," +
+    static final String PORTAL_API_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=accession," +
+            "last_updated";
+
+    static final String LIVELST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=accession," +
             "last_updated";
 
     @SneakyThrows
     public File getLatestSnapshot(DataType dataType, File outputFile, String query) {
-        String req = String.format(URL, dataType.name().toLowerCase());
+        String req;
         if (StringUtils.isNotBlank(query)) {
+            req = String.format(PORTAL_API_URL, dataType.name().toLowerCase());
             req += "&query=" + query;
+
+        } else {
+            req = String.format(LIVELST_URL, dataType.name().toLowerCase());
         }
         URL url = new URL(req);
 

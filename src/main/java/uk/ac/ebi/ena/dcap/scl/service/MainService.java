@@ -46,7 +46,7 @@ public class MainService {
     final ExecutorService executorService = Executors.newFixedThreadPool(2);
 
     @Autowired
-    PortalApiClient portalApiClient;
+    SnapshotClient snapshotClient;
 
 
     public File writeLatestSnapshot(DataType dataType, File outputLocation, String fileName, String query) {
@@ -55,7 +55,7 @@ public class MainService {
         if (outFile.exists()) {
             outFile.delete();
         }
-        return portalApiClient.getLatestSnapshot(dataType, outFile, query);
+        return snapshotClient.getLatestSnapshot(dataType, outFile, query);
     }
 
     @SneakyThrows
