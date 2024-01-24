@@ -37,21 +37,36 @@ import java.net.URL;
 @Slf4j
 public class SnapshotClient {
 
-    static final String PORTAL_API_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=accession," +
-            "last_updated";
+    static final String PORTAL_API_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=%s";
 
-    static final String LIVELST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=accession," +
-            "last_updated";
+    static final String LIVELIST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=%s";
+    static final String PARENT_ACCESSION = "parent_accession";
+    static final String ACCESSION = "accession";
+    static final String LAST_UPDATED = "last_updated";
+
+    private static String getFields(String resultId, boolean includeParentAccession) {
+        String defaultFields;
+        if (includeParentAccession && resultId.equalsIgnoreCase("coding") ||
+                resultId.equalsIgnoreCase("noncoding")) {
+            defaultFields = ACCESSION + "," + PARENT_ACCESSION + "," + LAST_UPDATED;
+        } else {
+            defaultFields = ACCESSION + "," + LAST_UPDATED;
+        }
+
+        return defaultFields;
+    }
 
     @SneakyThrows
-    public File getLatestSnapshot(DataType dataType, File outputFile, String query) {
+    public File getLatestSnapshot(DataType dataType, File outputFile, String query, boolean includeParentAccession) {
         String req;
         if (StringUtils.isNotBlank(query)) {
-            req = String.format(PORTAL_API_URL, dataType.name().toLowerCase());
+            req = String.format(PORTAL_API_URL, dataType.name().toLowerCase(), getFields(dataType.name(),
+                    includeParentAccession));
             req += "&query=" + query;
 
         } else {
-            req = String.format(LIVELST_URL, dataType.name().toLowerCase());
+            req = String.format(LIVELIST_URL, dataType.name().toLowerCase(), getFields(dataType.name(),
+                    includeParentAccession));
         }
         URL url = new URL(req);
 

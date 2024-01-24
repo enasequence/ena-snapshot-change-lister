@@ -27,7 +27,7 @@ Java runtime version 8 or higher is required.
 
 # Running the program
 
-You need to provide 3 arguments.
+You need to provide 3 mandatory arguments i.e datatype, previousSnapshot & outputLocation
 
 1. dataType : SEQUENCE/CODING/NONCODING
    
@@ -40,10 +40,10 @@ You need to provide 3 arguments.
 4. email : optionally provide an email address to be notified when the process is complete
 
 5. query : optionally provide a query string to filter the contents of your snapshot. Use the Query page in the 
-   https://www.ebi.ac.uk/ena/browser/advanced-search wizard to build up the query. This should be the same query 
-   for every execution of the tool for a specific snapshot. e.g. --query=dataclass="CON"
+   https://www.ebi.ac.uk/ena/browser/advanced-search wizard to build up the query. This should be the same query for
+   every execution of the tool for a specific snapshot. e.g. --query=dataclass="CON"
 
-6. downloadData : (Optional) If value is true, the tool will also fetch the data for the new/updated records and save 
+6. downloadData : (Optional) If value is true, the tool will also fetch the data for the new/updated records and save
    them in a .dat file.
 
 7. format : (Optional) Used only if downloadData=true. Request embl flatfile format (default) or fasta format for
@@ -51,6 +51,9 @@ You need to provide 3 arguments.
 
 8. annotationOnly : (Optional) Used only if downloadData=true and format=embl. Download only the annotations, excluding
    sequence lines.
+
+9. includeParentAccession : (Optional) Valid only for coding & noncoding. If true,get parent_accession also from API and
+   include in the output list files.
 
 e.g. 1
 java -jar [path]/snapshot-change-lister-1.1.0.jar --dataType=CODING --previousSnapshot=[path]/coding_20210701.tsv --outputLocation=[path] --email=email@email.com

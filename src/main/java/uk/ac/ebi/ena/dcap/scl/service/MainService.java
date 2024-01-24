@@ -49,13 +49,14 @@ public class MainService {
     SnapshotClient snapshotClient;
 
 
-    public File writeLatestSnapshot(DataType dataType, File outputLocation, String fileName, String query) {
+    public File writeLatestSnapshot(DataType dataType, File outputLocation, String fileName, String query,
+                                    boolean includeParentAccession) {
 
         File outFile = new File(outputLocation.getAbsolutePath() + File.separator + fileName + ".tsv");
         if (outFile.exists()) {
             outFile.delete();
         }
-        return snapshotClient.getLatestSnapshot(dataType, outFile, query);
+        return snapshotClient.getLatestSnapshot(dataType, outFile, query, includeParentAccession);
     }
 
     @SneakyThrows
