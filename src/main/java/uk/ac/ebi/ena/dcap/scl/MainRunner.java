@@ -82,7 +82,7 @@ public class MainRunner implements CommandLineRunner {
     @SneakyThrows
     @Override
     public void run(String... args) {
-        DataType dataType = DataType.valueOf(dataTypeStr);
+        DataType dataType = DataType.valueOf(dataTypeStr.toUpperCase());
         File prevSnapshot = new File(previousSnapshotPath);
         assert prevSnapshot.exists();
         File outputLocation = new File(outputLocationPath);
