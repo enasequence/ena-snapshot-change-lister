@@ -70,6 +70,9 @@ public class MainRunner implements CommandLineRunner {
     @Value("${format:embl}")
     public String format;
 
+    @Value("${includeParentAccession:#{false}}")
+    public boolean includeParentAccession;
+
     @Autowired
     private MainService mainService;
 
@@ -84,10 +87,14 @@ public class MainRunner implements CommandLineRunner {
         assert prevSnapshot.exists();
         File outputLocation = new File(outputLocationPath);
         assert outputLocation.canWrite();
+        if (includeParentAccession && !(dataType == DataType.CODING || dataType == DataType.NONCODING)) {
+            throw new IllegalArgumentException("includeParentAccession can be true only for coding & noncoding");
+        }
 
         String name = dataType.name().toLowerCase() + "_" + DATE_FORMAT.format(new Date());
         try {
-            File newSnapshot = mainService.writeLatestSnapshot(dataType, outputLocation, name, query);
+            File newSnapshot = mainService.writeLatestSnapshot(dataType, outputLocation, name, query,
+                    includeParentAccession);
             final DiffFiles diffFiles = mainService.compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
             if (downloadData) {
                 mainService.downloadData(diffFiles.getNewOrChangedList(), format, annotationOnly);
