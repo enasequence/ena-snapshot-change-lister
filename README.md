@@ -14,7 +14,7 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 1. This program downloads the complete list of public INSDC sequence accessions and their last updated dates (if available) for the requested type using the ENA Portal API.
 e.g. for sequence:
-https://www.ebi.ac.uk/ena/portal/api/search?dataPortal=ena&result=sequence&fields=accession,last_updated
+https://www.ebi.ac.uk/ena/browser/api/livelist/sequence?fields=accession,last_updated
 
 2. It then compares the new list against a previous list of the same type and generates 2 lists.
     list of new or updated records since the last time
@@ -37,26 +37,24 @@ You need to provide 3 mandatory arguments i.e datatype, previousSnapshot & outpu
 3. outputLocation : Local folder where the new complete report and the 2 change lists are to be created. Ensure there's
     enough disk space available.
     
-4. email : optionally provide an email address to be notified when the process is complete
-
-5. query : optionally provide a query string to filter the contents of your snapshot. Use the Query page in the 
+4. query : optionally provide a query string to filter the contents of your snapshot. Use the Query page in the 
    https://www.ebi.ac.uk/ena/browser/advanced-search wizard to build up the query. This should be the same query for
    every execution of the tool for a specific snapshot. e.g. --query=dataclass="CON"
 
-6. downloadData : (Optional) If value is true, the tool will also fetch the data for the new/updated records and save
+5. downloadData : (Optional) If value is true, the tool will also fetch the data for the new/updated records and save
    them in a .dat file.
 
-7. format : (Optional) Used only if downloadData=true. Request embl flatfile format (default) or fasta format for
+6. format : (Optional) Used only if downloadData=true. Request embl flatfile format (default) or fasta format for
    downloaded data.
 
-8. annotationOnly : (Optional) Used only if downloadData=true and format=embl. Download only the annotations, excluding
+7. annotationOnly : (Optional) Used only if downloadData=true and format=embl. Download only the annotations, excluding
    sequence lines.
 
-9. includeParentAccession : (Optional) Valid only for coding & noncoding. If true,get parent_accession also from API and
+8. includeParentAccession : (Optional) Valid only for coding & noncoding. If true,get parent_accession also from API and
    include in the output list files.
 
 e.g. 1
-java -jar [path]/snapshot-change-lister-1.1.0.jar --dataType=CODING --previousSnapshot=[path]/coding_20210701.tsv --outputLocation=[path] --email=email@email.com
+java -jar [path]/ena-snapshot-tool-1.3.0.jar --dataType=CODING --previousSnapshot=[path]/coding_20210701.tsv --outputLocation=[path]
 
 If this program were run on 2021-08-03, it would create 3 new files in the outputLocation folder.
 
@@ -67,7 +65,7 @@ coding_20210803_new-or-updated.tsv
 coding_20210803_deleted.tsv
 
 e.g. 2
-java -jar [path]/snapshot-change-lister-1.1.0.jar --dataType=SEQUENCE --previousSnapshot=[path]/sequence_20220220.tsv --outputLocation=[path] --query=dataclass="HTG" --downloadData=true --format=embl --annotationOnly=true"
+java -jar [path]/ena-snapshot-tool-1.3.0.jar --dataType=SEQUENCE --previousSnapshot=[path]/sequence_20220220.tsv --outputLocation=[path] --query=dataclass="HTG" --downloadData=true --format=embl --annotationOnly=true"
 
 If this program were run on 2022-02-23, it would create 4 new files in the outputLocation folder.
 
@@ -82,10 +80,10 @@ sequence_20220223_deleted.tsv
 
 Example for running in LSF:
 
-bsub -n 2 -M 10000 -J coding-snapshot-change-lister -o /path/snapshot-changes/output-20211210.log java -jar  snapshot-change-lister-1.0.0.jar --email=email@email.com --dataType=CODING --previousSnapshot=/path/coding_20211028.tsv --outputLocation=/path/
+bsub -n 2 -M 10000 -J coding-ena-snapshot-tool -o /path/snapshot-changes/output-20211210.log java -jar  ena-snapshot-tool-1.3.0.jar --dataType=CODING --previousSnapshot=/path/coding_20211028.tsv --outputLocation=/path/
 
 
 
 # Support
 
-Direct any questions/issues to https://www.ebi.ac.uk/ena/browser/support with snapshot-change-lister in the subject
+Direct any questions/issues to https://www.ebi.ac.uk/ena/browser/support with ena-snapshot-tool in the subject

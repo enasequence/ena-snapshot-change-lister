@@ -33,9 +33,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.*;
 
+import static uk.ac.ebi.ena.dcap.scl.MainRunner.DATE_FORMAT;
 import static uk.ac.ebi.ena.dcap.scl.model.Line.POISON;
 
 @Service
@@ -60,7 +62,8 @@ public class MainService {
     }
 
     @SneakyThrows
-    public DiffFiles compareSnapshots(File previousSnapshot, File latestSnapshot, File outputLocation, String namePrefix) {
+    public DiffFiles compareSnapshots(File previousSnapshot, File latestSnapshot, File outputLocation,
+                                      String namePrefix) {
         log.info("comparing:{} and {}", previousSnapshot.getAbsolutePath(), latestSnapshot.getAbsolutePath());
         File newOrUpdated = new File(outputLocation.getAbsolutePath() + File.separator + namePrefix + "_new-or" +
                 "-updated.tsv");
@@ -151,8 +154,8 @@ public class MainService {
         DateFormat LAST_UPDATED_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
         long count = 0;
         try {
-            try (BufferedReader reader = new BufferedReader(new FileReader(snapshot))) {
-                String line = reader.readLine();
+            try (BufferedReader snapshotReader = new BufferedReader(new FileReader(snapshot))) {
+                String line = snapshotReader.readLine();
                 if (StringUtils.isNotBlank(line)) {
                     if (line.startsWith("accession")) {
                         // skip
@@ -160,14 +163,15 @@ public class MainService {
                         count++;
                         queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
                     }
-                }
-                while ((line = reader.readLine()) != null) {
-                    count++;
-                    if (count % 100000000 == 0) {
-                        log.info("read {} from {}: {}", count, snapshot.getName(), line);
+                    while ((line = snapshotReader.readLine()) != null) {
+                        count++;
+                        if (count % 100000000 == 0) {
+                            log.info("read {} from {}: {}", count, snapshot.getName(), line);
+                        }
+                        queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
                     }
-                    queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
                 }
+
             }
             log.info("{} added. poisoning:{}", count, snapshot.getName());
 
@@ -195,7 +199,8 @@ public class MainService {
         List<List<String>> subSets = ListUtils.partition(lines, 1000);
         try (BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream(dataFile))) {
             subSets.stream().map(s -> StringUtils.join(s, ",")).forEach(s -> {
-                log.info("downloading:{}-{}", StringUtils.substringBefore(s,","), StringUtils.substringAfterLast(s,","));
+                log.info("downloading:{}-{}", StringUtils.substringBefore(s, ","), StringUtils.substringAfterLast(s,
+                        ","));
                 try {
                     String url = req + s;
                     if ("embl".equalsIgnoreCase(format) && annotationOnly) {
@@ -209,6 +214,36 @@ public class MainService {
                     log.error("Failed:" + BROWSER_API_EMBL + s, e);
                 }
             });
+        }
+    }
+
+    @SneakyThrows
+    public void fetchSnapshotAndCompare(String dataTypeStr, String previousSnapshotPath, String outputLocationPath,
+                                        String query, boolean includeParentAccession, String format,
+                                        boolean annotationOnly, boolean downloadData) {
+        DataType dataType = DataType.valueOf(dataTypeStr.toUpperCase());
+        File prevSnapshot = new File(previousSnapshotPath);
+        if (!prevSnapshot.exists()) {
+            log.info("Previous snapshot:{} does not exist.", previousSnapshotPath);
+            prevSnapshot.createNewFile();
+        }
+        File outputLocation = new File(outputLocationPath);
+        assert outputLocation.canWrite();
+        if (includeParentAccession && !(dataType == DataType.CODING || dataType == DataType.NONCODING)) {
+            throw new IllegalArgumentException("includeParentAccession can be true only for coding & noncoding");
+        }
+
+        String name = dataType.name().toLowerCase() + "_" + DATE_FORMAT.format(new Date());
+        try {
+            File newSnapshot = writeLatestSnapshot(dataType, outputLocation, name, query,
+                    includeParentAccession);
+            final DiffFiles diffFiles = compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
+            if (downloadData) {
+                downloadData(diffFiles.getNewOrChangedList(), format, annotationOnly);
+            }
+        } catch (Exception e) {
+            log.error("error:", e);
+            System.exit(1);
         }
     }
 }

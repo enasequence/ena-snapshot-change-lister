@@ -19,6 +19,7 @@ import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 
 import java.text.DateFormat;
@@ -27,6 +28,7 @@ import java.util.Date;
 @Getter
 @AllArgsConstructor
 @EqualsAndHashCode
+@Slf4j
 public class Line {
 
     public static Line POISON = new Line(null, null);
@@ -36,11 +38,16 @@ public class Line {
 
     @SneakyThrows
     public static Line of(String s, DateFormat df) {
-        final String[] split = StringUtils.split(s);
-        if (split.length == 2) {
-            return new Line(split[0], df.parse(split[1]));
-        } else {
-            return new Line(split[0], null);
+        try {
+            final String[] split = StringUtils.split(s);
+            if (split.length == 2) {
+                return new Line(split[0], df.parse(split[1]));
+            } else {
+                return new Line(split[0], null);
+            }
+        } catch (Exception e) {
+            log.error("Error in line:{}", s, e);
+            throw e;
         }
     }
 }
