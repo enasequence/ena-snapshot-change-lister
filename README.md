@@ -87,3 +87,6 @@ bsub -n 2 -M 10000 -J coding-ena-snapshot-tool -o /path/snapshot-changes/output-
 # Support
 
 Direct any questions/issues to https://www.ebi.ac.uk/ena/browser/support with ena-snapshot-tool in the subject
+
+# Benchmark
+Fetched full coding set with 3214942946 records and processed in ~7 hours, using 2GB max memory out of 8GB allocated, using 2 CPU cores.
