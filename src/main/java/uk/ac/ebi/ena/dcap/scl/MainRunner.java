@@ -46,15 +46,6 @@ public class MainRunner implements CommandLineRunner {
     @Value("${query:#{null}}")
     public String query;
 
-    @Value("${downloadData:#{false}}")
-    public boolean downloadData;
-
-    @Value("${annotationOnly:#{false}}")
-    public boolean annotationOnly;
-
-    @Value("${format:embl}")
-    public String format;
-
     @Value("${includeParentAccession:#{false}}")
     public boolean includeParentAccession;
 
@@ -64,7 +55,8 @@ public class MainRunner implements CommandLineRunner {
     @SneakyThrows
     @Override
     public void run(String... args) {
-        mainService.fetchSnapshotAndCompare(dataTypeStr, previousSnapshotPath, outputLocationPath, query, includeParentAccession, format, annotationOnly, downloadData);
+        mainService.fetchSnapshotAndCompare(dataTypeStr, previousSnapshotPath, outputLocationPath, query,
+                includeParentAccession);
     }
 
 }

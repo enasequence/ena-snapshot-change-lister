@@ -41,16 +41,7 @@ You need to provide 3 mandatory arguments i.e datatype, previousSnapshot & outpu
    https://www.ebi.ac.uk/ena/browser/advanced-search wizard to build up the query. This should be the same query for
    every execution of the tool for a specific snapshot. e.g. --query=dataclass="CON"
 
-5. downloadData : (Optional) If value is true, the tool will also fetch the data for the new/updated records and save
-   them in a .dat file.
-
-6. format : (Optional) Used only if downloadData=true. Request embl flatfile format (default) or fasta format for
-   downloaded data.
-
-7. annotationOnly : (Optional) Used only if downloadData=true and format=embl. Download only the annotations, excluding
-   sequence lines.
-
-8. includeParentAccession : (Optional) Valid only for coding & noncoding. If true,get parent_accession also from API and
+5. includeParentAccession : (Optional) Valid only for coding & noncoding. If true,get parent_accession also from API and
    include in the output list files.
 
 e.g. 1
@@ -65,15 +56,13 @@ coding_20210803_new-or-updated.tsv
 coding_20210803_deleted.tsv
 
 e.g. 2
-java -jar [path]/ena-snapshot-tool-1.3.0.jar --dataType=SEQUENCE --previousSnapshot=[path]/sequence_20220220.tsv --outputLocation=[path] --query=dataclass="HTG" --downloadData=true --format=embl --annotationOnly=true"
+java -jar [path]/ena-snapshot-tool-1.3.0.jar --dataType=SEQUENCE --previousSnapshot=[path]/sequence_20220220.tsv --outputLocation=[path] --query=dataclass="HTG" 
 
 If this program were run on 2022-02-23, it would create 4 new files in the outputLocation folder.
 
 sequence_20220223.tsv
 
 sequence_20220223_new-or-updated.tsv
-
-sequence_20220223_new-or-updated.dat
 
 sequence_20220223_deleted.tsv
 

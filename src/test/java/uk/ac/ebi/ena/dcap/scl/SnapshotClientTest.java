@@ -20,6 +20,7 @@ public class SnapshotClientTest {
                 output);
         final List<String> lines = Files.lines(output.toPath()).collect(Collectors.toList());
         assertEquals("TAAT01000000\t2023-12-27", lines.get(lines.size() - 1));
-        assertEquals("KAAA01000000\t2019-05-10", lines.get(0));
+        assertEquals("KAAA01000000\t2019-05-10", lines.get(1));
+        assertEquals("accession\tlast_updated", lines.get(0));
     }
 }

@@ -5,20 +5,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 
-@Component
 @Slf4j
 public class CountClient {
     static final String PORTAL_API_COUNT_URL = "https://www.ebi.ac.uk/ena/portal/api/count?result=%s&format=json";
 
     @SneakyThrows
-    public long getCountFromResults(String result, String query) {
+    public static long getCountFromResults(String result, String query) {
         // Your JSON array as a string
 
         // Create ObjectMapper
@@ -33,7 +31,7 @@ public class CountClient {
     }
 
     @SneakyThrows
-    private String getJson(String portalApiResultsUrl, String result, String query) {
+    private static String getJson(String portalApiResultsUrl, String result, String query) {
 
         String urlStr = String.format(PORTAL_API_COUNT_URL, result);
         if (StringUtils.isNotBlank(query)) {
