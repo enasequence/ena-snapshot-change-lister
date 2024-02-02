@@ -16,7 +16,14 @@
 package uk.ac.ebi.ena.dcap.scl.model;
 
 public enum DataType {
+    ANALYSIS,
+    ASSEMBLY,
+    SAMPLE,
     SEQUENCE,
+    STUDY,
+    READ_RUN,
     CODING,
-    NONCODING;
+    NONCODING,
+
+    TLS_SET, TSA_SET, WGS_SET;
 }

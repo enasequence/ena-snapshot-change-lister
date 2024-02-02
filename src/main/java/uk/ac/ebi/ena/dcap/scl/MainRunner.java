@@ -18,26 +18,14 @@ package uk.ac.ebi.ena.dcap.scl;
 import lombok.NoArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessagePreparator;
 import org.springframework.stereotype.Component;
-import uk.ac.ebi.ena.dcap.scl.model.DataType;
-import uk.ac.ebi.ena.dcap.scl.model.DiffFiles;
 import uk.ac.ebi.ena.dcap.scl.service.MainService;
 
-import javax.mail.Message;
-import javax.mail.MessagingException;
-import javax.mail.internet.InternetAddress;
-import javax.mail.internet.MimeMessage;
-import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 
 @Component
 @Slf4j
@@ -55,20 +43,8 @@ public class MainRunner implements CommandLineRunner {
     @Value("${outputLocation}")
     public String outputLocationPath;
 
-    @Value("${email:#{null}}")
-    public String email;
-
     @Value("${query:#{null}}")
     public String query;
-
-    @Value("${downloadData:#{false}}")
-    public boolean downloadData;
-
-    @Value("${annotationOnly:#{false}}")
-    public boolean annotationOnly;
-
-    @Value("${format:embl}")
-    public String format;
 
     @Value("${includeParentAccession:#{false}}")
     public boolean includeParentAccession;
@@ -76,60 +52,11 @@ public class MainRunner implements CommandLineRunner {
     @Autowired
     private MainService mainService;
 
-    @Autowired
-    JavaMailSender mailSender;
-
     @SneakyThrows
     @Override
     public void run(String... args) {
-        DataType dataType = DataType.valueOf(dataTypeStr.toUpperCase());
-        File prevSnapshot = new File(previousSnapshotPath);
-        assert prevSnapshot.exists();
-        File outputLocation = new File(outputLocationPath);
-        assert outputLocation.canWrite();
-        if (includeParentAccession && !(dataType == DataType.CODING || dataType == DataType.NONCODING)) {
-            throw new IllegalArgumentException("includeParentAccession can be true only for coding & noncoding");
-        }
-
-        String name = dataType.name().toLowerCase() + "_" + DATE_FORMAT.format(new Date());
-        try {
-            File newSnapshot = mainService.writeLatestSnapshot(dataType, outputLocation, name, query,
-                    includeParentAccession);
-            final DiffFiles diffFiles = mainService.compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
-            if (downloadData) {
-                mainService.downloadData(diffFiles.getNewOrChangedList(), format, annotationOnly);
-            }
-            if (StringUtils.isNotBlank(email)) {
-                sendMail(email, dataTypeStr + " change lister completed",
-                        "Compared " + prevSnapshot + " & " + newSnapshot + " in " + outputLocation);
-            }
-        } catch (Exception e) {
-            log.error("error:", e);
-            if (StringUtils.isNotBlank(email)) {
-                sendMail(email, dataTypeStr + " change lister failed", ExceptionUtils.getStackTrace(e));
-            }
-        }
+        mainService.fetchSnapshotAndCompare(dataTypeStr, previousSnapshotPath, outputLocationPath, query,
+                includeParentAccession);
     }
 
-    public void sendMail(String email, String subject, String body, String... args) throws MessagingException {
-        MimeMessagePreparator preparator = new MimeMessagePreparator() {
-
-            public void prepare(MimeMessage mimeMessage) throws Exception {
-
-                mimeMessage.setRecipient(Message.RecipientType.TO,
-                        new InternetAddress(email));
-                mimeMessage.setFrom(new InternetAddress("datalib@ebi.ac.uk"));
-                mimeMessage.setText(body
-                        + System.lineSeparator() + StringUtils.join(args, " "));
-                mimeMessage.setSubject(subject);
-            }
-        };
-
-        try {
-            mailSender.send(preparator);
-        } catch (Exception ex) {
-            // simply log it and go on...
-            log.error("Error sending email", ex);
-        }
-    }
 }

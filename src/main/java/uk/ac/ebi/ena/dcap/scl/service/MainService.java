@@ -17,8 +17,6 @@ package uk.ac.ebi.ena.dcap.scl.service;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.ListUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -27,15 +25,12 @@ import uk.ac.ebi.ena.dcap.scl.model.DiffFiles;
 import uk.ac.ebi.ena.dcap.scl.model.Line;
 
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.List;
+import java.util.Date;
 import java.util.concurrent.*;
 
+import static uk.ac.ebi.ena.dcap.scl.MainRunner.DATE_FORMAT;
 import static uk.ac.ebi.ena.dcap.scl.model.Line.POISON;
 
 @Service
@@ -49,18 +44,55 @@ public class MainService {
     SnapshotClient snapshotClient;
 
 
-    public File writeLatestSnapshot(DataType dataType, File outputLocation, String fileName, String query,
-                                    boolean includeParentAccession) {
+    public static File writeLatestSnapshot(DataType dataType, File outputLocation, String fileName, String query,
+                                           boolean includeParentAccession) {
 
         File outFile = new File(outputLocation.getAbsolutePath() + File.separator + fileName + ".tsv");
         if (outFile.exists()) {
             outFile.delete();
         }
-        return snapshotClient.getLatestSnapshot(dataType, outFile, query, includeParentAccession);
+        return SnapshotClient.getLatestSnapshot(dataType, outFile, query, includeParentAccession);
     }
 
     @SneakyThrows
-    public DiffFiles compareSnapshots(File previousSnapshot, File latestSnapshot, File outputLocation, String namePrefix) {
+    private static boolean loadToQueues(File snapshot, BlockingQueue<Line> queue) {
+        log.info("reading from:{}", snapshot);
+        DateFormat LAST_UPDATED_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
+        long count = 0;
+        try {
+            try (BufferedReader snapshotReader = new BufferedReader(new FileReader(snapshot))) {
+                String line = snapshotReader.readLine();
+                if (StringUtils.isNotBlank(line)) {
+                    if (line.startsWith("accession")) {
+                        // skip
+                    } else {
+                        count++;
+                        queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
+                    }
+                    while ((line = snapshotReader.readLine()) != null) {
+                        count++;
+                        if (count % 100000000 == 0) {
+                            log.info("read {} from {}: {}", count, snapshot.getName(), line);
+                        }
+                        queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
+                    }
+                }
+
+            }
+            log.info("{} added. poisoning:{}", count, snapshot.getName());
+
+            return true;
+        } catch (Exception e) {
+            log.error(snapshot.getName() + " Error:", e);
+            return false;
+        } finally {
+            queue.put(POISON);
+        }
+    }
+
+    @SneakyThrows
+    public DiffFiles compareSnapshots(File previousSnapshot, File latestSnapshot, File outputLocation,
+                                      String namePrefix) {
         log.info("comparing:{} and {}", previousSnapshot.getAbsolutePath(), latestSnapshot.getAbsolutePath());
         File newOrUpdated = new File(outputLocation.getAbsolutePath() + File.separator + namePrefix + "_new-or" +
                 "-updated.tsv");
@@ -140,75 +172,37 @@ public class MainService {
         }
         log.info("shutting down");
         executorService.shutdown();
-        log.info("new records found:{}", newCount);
-        log.info("records to be deleted:{}", delCount);
+        log.info("new records found:{} listed in {}", newCount, newOrUpdated.getAbsolutePath());
+        log.info("records to be deleted:{} listed in {}", delCount, deleted.getAbsolutePath());
         return new DiffFiles(newOrUpdated, deleted);
     }
 
     @SneakyThrows
-    private boolean loadToQueues(File snapshot, BlockingQueue<Line> queue) {
-        log.info("reading from:{}", snapshot);
-        DateFormat LAST_UPDATED_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
-        long count = 0;
+    public File fetchSnapshotAndCompare(String dataTypeStr, String previousSnapshotPath, String outputLocationPath,
+                                        String query, boolean includeParentAccession) {
+        DataType dataType = DataType.valueOf(dataTypeStr.toUpperCase());
+        File prevSnapshot = new File(previousSnapshotPath);
+        if (!prevSnapshot.exists()) {
+            log.info("Previous snapshot:{} does not exist.", previousSnapshotPath);
+            prevSnapshot.createNewFile();
+        }
+        File outputLocation = new File(outputLocationPath);
+        assert outputLocation.canWrite();
+        if (includeParentAccession && !(dataType == DataType.CODING || dataType == DataType.NONCODING)) {
+            throw new IllegalArgumentException("includeParentAccession can be true only for coding & noncoding");
+        }
+
+        String name = dataType.name().toLowerCase() + "_" + DATE_FORMAT.format(new Date());
         try {
-            try (BufferedReader reader = new BufferedReader(new FileReader(snapshot))) {
-                String line = reader.readLine();
-                if (StringUtils.isNotBlank(line)) {
-                    if (line.startsWith("accession")) {
-                        // skip
-                    } else {
-                        count++;
-                        queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
-                    }
-                }
-                while ((line = reader.readLine()) != null) {
-                    count++;
-                    if (count % 100000000 == 0) {
-                        log.info("read {} from {}: {}", count, snapshot.getName(), line);
-                    }
-                    queue.put(Line.of(line, LAST_UPDATED_DATE_FORMAT));
-                }
-            }
-            log.info("{} added. poisoning:{}", count, snapshot.getName());
+            File newSnapshot = writeLatestSnapshot(dataType, outputLocation, name, query,
+                    includeParentAccession);
+            final DiffFiles diffFiles = compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
 
-            return true;
+            return newSnapshot;
         } catch (Exception e) {
-            log.error(snapshot.getName() + " Error:", e);
-            return false;
-        } finally {
-            queue.put(POISON);
+            log.error("error:", e);
+            System.exit(1);
         }
-    }
-
-
-    @SneakyThrows
-    public void downloadData(File newOrChangedList, String format, boolean annotationOnly) {
-        String req = String.format(BROWSER_API_EMBL, format);
-
-        final List<String> lines = Files.readAllLines(Paths.get(newOrChangedList.getAbsolutePath()));
-        log.info("downloading for:{} records in {}", lines.size(), newOrChangedList.getAbsolutePath());
-        File dataFile = new File(StringUtils.substringBeforeLast(newOrChangedList.getAbsolutePath(), ".") + ".dat");
-        if (dataFile.exists()) {
-            dataFile.delete();
-        }
-        log.info("writing to:{}", dataFile.getAbsolutePath());
-        List<List<String>> subSets = ListUtils.partition(lines, 1000);
-        try (BufferedOutputStream bw = new BufferedOutputStream(new FileOutputStream(dataFile))) {
-            subSets.stream().map(s -> StringUtils.join(s, ",")).forEach(s -> {
-                log.info("downloading:{}-{}", StringUtils.substringBefore(s,","), StringUtils.substringAfterLast(s,","));
-                try {
-                    String url = req + s;
-                    if ("embl".equalsIgnoreCase(format) && annotationOnly) {
-                        url += "?annotationOnly=true";
-                    }
-//                    log.info("req:{}", url);
-                    HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-                    InputStream inputStream = connection.getInputStream();
-                    IOUtils.copy(inputStream, bw);
-                } catch (IOException e) {
-                    log.error("Failed:" + BROWSER_API_EMBL + s, e);
-                }
-            });
-        }
+        return null;
     }
 }

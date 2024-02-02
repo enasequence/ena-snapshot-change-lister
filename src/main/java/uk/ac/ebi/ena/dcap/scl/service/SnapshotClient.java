@@ -15,9 +15,12 @@
  ******************************************************************************/
 package uk.ac.ebi.ena.dcap.scl.service;
 
+import com.github.davidmoten.bigsorter.Serializer;
+import com.github.davidmoten.bigsorter.Sorter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -27,11 +30,11 @@ import org.apache.http.impl.client.HttpClients;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.ena.dcap.scl.model.DataType;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Comparator;
 
 @Component
 @Slf4j
@@ -39,10 +42,14 @@ public class SnapshotClient {
 
     static final String PORTAL_API_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=%s";
 
+
     static final String LIVELIST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=%s";
     static final String PARENT_ACCESSION = "parent_accession";
     static final String ACCESSION = "accession";
     static final String LAST_UPDATED = "last_updated";
+
+//    @Autowired
+//    CountClient countClient;
 
     private static String getFields(String resultId, boolean includeParentAccession) {
         String defaultFields;
@@ -56,8 +63,31 @@ public class SnapshotClient {
         return defaultFields;
     }
 
+    public static void bigSortFile(File infile, File outfile) {
+        Serializer<CSVRecord> serializer =
+                Serializer.csv(
+                        CSVFormat
+                                .DEFAULT
+                                .withFirstRecordAsHeader()
+                                .withDelimiter('\t'),
+                        StandardCharsets.UTF_8);
+        Comparator<CSVRecord> comparator = (x, y) -> {
+            String a = (x.get("accession"));
+            String b = (y.get("accession"));
+            return a.compareTo(b);
+        };
+        Sorter
+                // set both serializer and natural comparator
+                .serializer(serializer)
+                .comparator(comparator)
+                .input(infile)
+                .output(outfile)
+                .sort();
+    }
+
     @SneakyThrows
-    public File getLatestSnapshot(DataType dataType, File outputFile, String query, boolean includeParentAccession) {
+    public static File getLatestSnapshot(DataType dataType, File outputFile, String query,
+                                         boolean includeParentAccession) {
         String req;
         if (StringUtils.isNotBlank(query)) {
             req = String.format(PORTAL_API_URL, dataType.name().toLowerCase(), getFields(dataType.name(),
@@ -76,14 +106,30 @@ public class SnapshotClient {
         try (CloseableHttpResponse response1 = client.execute(httpGet)) {
             final HttpEntity entity = response1.getEntity();
             if (entity != null) {
-                try (InputStream in = entity.getContent();
-                     OutputStream out = new FileOutputStream(outputFile)) {
+                File unsortedFile = new File(outputFile.getAbsolutePath() + ".unsorted");
+                long count = 0;
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(entity.getContent()));
+                     BufferedWriter out = new BufferedWriter(new FileWriter(unsortedFile))) {
                     log.info("writing response");
-                    IOUtils.copyLarge(in, out);
+                    String line = null;
+                    while ((line = in.readLine()) != null) {
+                        count++;
+                        out.write(line + "\n");
+                    }
                 }
+                log.info("records fetched:{}", count);
+                final long countFromResults = CountClient.getCountFromResults(dataType.name().toLowerCase(), query);
+                if (count < countFromResults) {
+                    throw new Exception("Fetched record count " + count + "is lower than index count " + countFromResults);
+                }
+                log.info("sorting to:{}", outputFile.getAbsolutePath());
+                bigSortFile(unsortedFile, outputFile);
+                log.info("deleting unsorted file:{}", unsortedFile.getAbsolutePath());
+                Files.delete(unsortedFile.toPath());
             }
         }
-        log.info("finished new snapshot pull from ENA");
+        log.info("finished new {} snapshot IDs pull from ENA", dataType);
         return outputFile;
     }
+
 }

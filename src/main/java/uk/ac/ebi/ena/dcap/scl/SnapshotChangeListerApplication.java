@@ -28,11 +28,5 @@ public class SnapshotChangeListerApplication {
         SpringApplication.run(SnapshotChangeListerApplication.class, args);
     }
 
-    @Bean
-    public JavaMailSender javaMailService() {
-        JavaMailSenderImpl javaMailSender = new JavaMailSenderImpl();
-        javaMailSender.setHost("smtp.ebi.ac.uk");
-        javaMailSender.setPort(25);
-        return javaMailSender;
-    }
+
 }
