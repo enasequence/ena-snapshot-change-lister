@@ -35,6 +35,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Comparator;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Component
 @Slf4j
@@ -43,7 +45,9 @@ public class SnapshotClient {
     static final String PORTAL_API_URL = "https://www.ebi.ac.uk/ena/portal/api/search?result=%s&fields=%s";
 
 
-    static final String LIVELIST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=%s";
+//    static final String LIVELIST_URL = "https://www.ebi.ac.uk/ena/browser/api/livelist/%s?fields=%s";
+    static final String LIVELIST_URL = "http://wp-np2-5c:8080/ena/browser/api/livelist/%s?fields=accession,parent_accession";
+//    static final String LIVELIST_URL = "http://localhost:8080/ena/browser/api/livelist/%s?fields=accession,parent_accession";
     static final String PARENT_ACCESSION = "parent_accession";
     static final String ACCESSION = "accession";
     static final String LAST_UPDATED = "last_updated";
@@ -69,7 +73,7 @@ public class SnapshotClient {
                         CSVFormat
                                 .DEFAULT
                                 .withFirstRecordAsHeader()
-                                .withDelimiter('\t'),
+                                .withDelimiter('|'),
                         StandardCharsets.UTF_8);
         Comparator<CSVRecord> comparator = (x, y) -> {
             String a = (x.get("accession"));
@@ -84,6 +88,7 @@ public class SnapshotClient {
                 .output(outfile)
                 .sort();
     }
+    public final static Pattern MASTER_CAPTURE_PATTERN = Pattern.compile("^([A-Z]{4}|[A-Z]{6})[0-9]{2}");
 
     @SneakyThrows
     public static File getLatestSnapshot(DataType dataType, File outputFile, String query,
@@ -111,10 +116,18 @@ public class SnapshotClient {
                 try (BufferedReader in = new BufferedReader(new InputStreamReader(entity.getContent()));
                      BufferedWriter out = new BufferedWriter(new FileWriter(unsortedFile))) {
                     log.info("writing response");
-                    String line = null;
+                    String line = in.readLine();// header
+                    out.write(line.replace("\t", "|") + "\n");
+
                     while ((line = in.readLine()) != null) {
                         count++;
-                        out.write(line + "\n");
+                        final String[] split = line.split("\t");
+                        String parent = "";
+                        Matcher matcher = MASTER_CAPTURE_PATTERN.matcher(split[1]);
+                        if (matcher.find()) {
+                            parent = "|" + (matcher.group(0));
+                        }
+                        out.write(split[0] + parent + "\n");
                     }
                 }
                 log.info("records fetched:{}", count);

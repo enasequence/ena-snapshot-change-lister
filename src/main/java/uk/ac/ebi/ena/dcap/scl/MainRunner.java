@@ -23,7 +23,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import uk.ac.ebi.ena.dcap.scl.service.MainService;
+import uk.ac.ebi.ena.dcap.scl.service.SnapshotClient;
 
+import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
@@ -55,8 +57,11 @@ public class MainRunner implements CommandLineRunner {
     @SneakyThrows
     @Override
     public void run(String... args) {
-        mainService.fetchSnapshotAndCompare(dataTypeStr, previousSnapshotPath, outputLocationPath, query,
-                includeParentAccession);
+        SnapshotClient.bigSortFile(new File("/nfs/production/cochrane/ena/index/ena-browser-load/test/daily_updates" +
+                "/coding/public-api-dump/coding/coding_20240203.tsv.unsorted"), new File("/nfs/production/cochrane" +
+                "/ena/index/ena-browser-load/test/daily_updates/coding/public-api-dump/coding/coding_20240203.tsv"));
+//        mainService.fetchSnapshotAndCompare(dataTypeStr, previousSnapshotPath, outputLocationPath, query,
+//                includeParentAccession);
     }
 
 }

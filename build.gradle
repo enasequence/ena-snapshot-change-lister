@@ -20,7 +20,7 @@ plugins {
 }
 
 group = 'uk.ac.ebi.ena.dcap'
-version = '1.3.0'
+version = '1.3.0-sharded-compare-sort-only'
 sourceCompatibility = '1.8'
 
 configurations {

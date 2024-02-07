@@ -196,7 +196,7 @@ public class MainService {
         try {
             File newSnapshot = writeLatestSnapshot(dataType, outputLocation, name, query,
                     includeParentAccession);
-            final DiffFiles diffFiles = compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
+//            final DiffFiles diffFiles = compareSnapshots(prevSnapshot, newSnapshot, outputLocation, name);
 
             return newSnapshot;
         } catch (Exception e) {

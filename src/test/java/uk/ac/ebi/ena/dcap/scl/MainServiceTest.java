@@ -31,4 +31,12 @@ public class MainServiceTest {
         assertEquals("TAAT01000000", lines.get(lines.size() - 1));
         assertEquals("KAAA01000000", lines.get(0));
     }
+
+    @SneakyThrows
+    @Test
+    public void testLivelistCoding() {
+        File output = new MainService().fetchSnapshotAndCompare("CODING", "cds.tsv",
+                ".", null, false);
+
+    }
 }
